@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Explore AI-assisted playground photo screening in Sengkang, Singapore.">
+<title>Canopy | Sengkang Playground Screening</title>
+<link rel="stylesheet" href="styles.css">
+<script defer src="data/records.js"></script>
+<script defer src="data/basemap.js"></script>
+<script defer src="core.js"></script>
+<script defer src="map.js"></script>
+<script defer src="app.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+<div class="shell">
+  <aside class="rail">
+    <a class="brand" href="#explore" aria-label="Canopy home"><span class="brand-mark" aria-hidden="true"></span><span>canopy<span class="brand-period">.</span></span></a>
+    <p class="rail-context">Sengkang, Singapore</p>
+    <nav id="navigation" aria-label="Project navigation">
+      <button data-tab="explore" aria-current="page"><span class="nav-symbol" aria-hidden="true">◎</span>Screening map</button>
+      <button data-tab="gallery"><span class="nav-symbol" aria-hidden="true">▧</span>Photo collection</button>
+      <button data-tab="compare"><span class="nav-symbol" aria-hidden="true">◫</span>Compare results<span id="compareCount" class="nav-count"></span></button>
+      <button data-tab="review"><span class="nav-symbol" aria-hidden="true">⚑</span>Review queue</button>
+      <button data-tab="data"><span class="nav-symbol" aria-hidden="true">≡</span>Playground data</button>
+      <button data-tab="methods"><span class="nav-symbol" aria-hidden="true">↳</span>Method &amp; guide</button>
+    </nav>
+    <div class="rail-foot"><strong>AR5958A · Group 4</strong><span>Topics in Urbanism 1</span></div>
+  </aside>
+  <main id="main" class="main" tabindex="-1">
+    <header class="masthead">
+      <div class="breadcrumbs"><span>Canopy</span><span aria-hidden="true">/</span><strong id="breadcrumb">Screening map</strong></div>
+      <div class="actions">
+        <button id="themeToggle" class="icon-button" aria-label="Switch colour theme" title="Switch colour theme">◐</button>
+        <details class="utility" id="utility"><summary class="button">Project tools <span aria-hidden="true">⌄</span></summary>
+          <div class="utility-menu">
+            <button id="importButton">Import Colab results</button>
+            <button id="exportButton">Export results CSV</button>
+            <button id="saveHtml">Save portable HTML</button>
+            <button id="helpButton">How to use Canopy</button>
+          </div>
+        </details>
+      </div>
+    </header>
+
+    <section id="explore" class="tab">
+      <div class="intro">
+        <div class="intro-copy">
+          <p class="location"><span aria-hidden="true">↗</span> Sengkang, Singapore</p>
+          <h1>Playground shade<br>screening.</h1>
+          <p class="lede">Explore what playground photographs reveal about trees, sky and buildings. Use the evidence to choose which sites to check in person.</p>
+          <div class="actions">
+            <button class="primary" id="exploreButton">Explore the map <span aria-hidden="true">↓</span></button>
+            <button class="plain" data-go="methods">How screening works <span aria-hidden="true">↗</span></button>
+          </div>
+        </div>
+        <figure class="hero-evidence">
+          <div class="hero-image" id="heroImage"></div>
+          <figcaption><span id="heroCaption">Playground @ Anchorvale Village</span><button id="heroInspect" class="plain">Inspect example <span aria-hidden="true">↗</span></button></figcaption>
+        </figure>
+      </div>
+      <div id="datasetBanner" class="dataset-band"></div>
+      <div id="stats" class="stats" aria-label="Dataset summary"></div>
+      <div id="mapWorkspace" class="workspace">
+        <section class="map-panel panel" aria-labelledby="mapHeading">
+          <header class="panelhead"><div><h2 id="mapHeading">Screening map</h2><p id="mapcount"></p></div><button id="fitMap">Fit locations</button></header>
+          <div class="filters">
+            <input type="search" id="search" aria-label="Search playgrounds" placeholder="Search ID or location…">
+            <select id="mapColour" aria-label="Map colour mode"><option value="indicators">Photo indicators</option><option value="review">Review status</option></select>
+            <select id="statusFilter" aria-label="Filter by screening status"><option value="all">All statuses</option><option value="candidate">Photo candidates</option><option value="review">Manual review</option><option value="inspection">Inspection candidates</option><option value="clear">Not flagged</option></select>
+          </div>
+          <div id="map" class="map" tabindex="0" aria-label="Interactive map of Sengkang. Use arrow keys to pan and plus or minus to zoom.">
+            <svg id="basemap" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><g id="mapGeometry"></g></svg>
+            <div id="markers" class="markers"></div>
+            <span class="map-label" id="mapnote">Sengkang basemap</span>
+            <div class="map-controls"><button id="zoomIn" aria-label="Zoom in">+</button><button id="zoomOut" aria-label="Zoom out">−</button></div>
+            <span id="mapScale" class="scale"></span>
+            <div class="attribution" id="mapAttribution"></div>
+          </div>
+          <div id="mapLegend" class="map-legend"></div>
+          <p id="ruleSummary" class="map-rule"></p>
+          <details class="map-results"><summary>Show matching playgrounds</summary><div id="mapResultList"></div></details>
+        </section>
+        <aside id="detail" class="panel detail" aria-label="Selected playground"></aside>
+      </div>
+      <p class="scope">Percentages describe visible pixels in one image per site. Field observations are needed to establish actual shade and heat exposure.</p>
+    </section>
+
+    <section id="gallery" class="tab" hidden>
+      <header class="page-heading"><h1>Photo collection</h1><p>Inspect the original, segmentation mask and overlay for each playground.</p></header>
+      <div class="section-controls"><input type="search" id="gallerySearch" aria-label="Search photo collection" placeholder="Search playground, ID or filename…"><span id="galleryCount" role="status"></span></div>
+      <div id="galleryGrid" class="gallery-grid"></div>
+    </section>
+    <section id="compare" class="tab" hidden>
+      <header class="page-heading"><h1>Compare results</h1><p>Compare up to four playground photographs using the same pixel categories.</p></header>
+      <div class="section-controls"><select id="comparePicker" aria-label="Choose playground to compare"></select><button id="addCompare" class="primary">Add playground</button><button id="clearCompare">Clear selection</button></div>
+      <div id="comparison" class="comparison"></div>
+      <section class="panel scatter-panel"><header class="panelhead"><div><h2>Tree pixels and visible sky</h2><p>Select a point to open its record.</p></div></header><div id="scatter" class="contentpad"></div></section>
+    </section>
+    <section id="review" class="tab" hidden>
+      <header class="page-heading"><h1>Review queue</h1><p>Check detection, photograph quality and location before using a screening flag.</p></header>
+      <div class="section-controls"><select id="queueFilter" aria-label="Filter review queue"><option value="all">All queued records</option><option value="candidate">Photo candidates</option><option value="unlocated">Missing coordinates</option><option value="inspection">Inspection candidates</option></select><button id="exportQueue">Export queue CSV</button></div>
+      <div id="queue" class="queue"></div>
+    </section>
+    <section id="data" class="tab" hidden>
+      <header class="page-heading"><h1>Playground data</h1><p>Sort the register, open records, or select rows for comparison.</p></header>
+      <div class="section-controls"><input type="search" id="dataSearch" aria-label="Search playground data" placeholder="Search ID, location or filename…"><span id="dataCount" role="status"></span></div>
+      <div class="tablewrap"><table><thead><tr><th scope="col"><button data-sort="playground_id">Playground ↕</button></th><th scope="col"><button data-sort="location">Location ↕</button></th><th scope="col"><button data-sort="tree_pct">Trees ↕</button></th><th scope="col"><button data-sort="sky_pct">Sky ↕</button></th><th scope="col">Feature mix</th><th scope="col">Status</th><th scope="col">Location confidence</th><th scope="col">Compare</th></tr></thead><tbody id="tablebody"></tbody></table></div>
+    </section>
+    <section id="methods" class="tab" hidden>
+      <header class="page-heading"><h1>Method &amp; guide</h1><p>How Canopy turns a photograph into evidence for human review.</p></header>
+      <div class="methods-layout">
+        <section><h2>From image to indicator</h2><p>We matched the 40 supplied photos to the coordinate register by exact filename and SHA-256. The site displays precomputed <a href="https://huggingface.co/nvidia/segformer-b2-finetuned-ade-512-512">SegFormer B2</a> outputs. For new photographs, run the Colab analysis and import the results.</p><p>The mask groups pixels into trees, other vegetation, sky, buildings and other features. Shelter visibility is recorded by a person.</p></section>
+        <section><h2>How the screening rule works</h2><p>A photo becomes a candidate when tree pixels are at or below the 25th percentile and sky pixels are at or above the 75th percentile. The rule uses all loaded records and requires at least five.</p><p id="methodThresholds" class="callout"></p><p>Detection, photo quality and coordinates must pass review before a record becomes an inspection candidate. Use a site visit to assess ground shade and heat exposure.</p></section>
+        <section><h2>Where errors occur</h2><p>Framing, weather and the date of capture affect what appears in the photo. SegFormer has no dedicated playground equipment class. In PG29, parts of a green slide were classified as vegetation.</p><button data-record="PG_29">Inspect PG29 ↗</button></section>
+        <section><h2>Save and reproduce</h2><p>Review notes for the supplied records are saved on this device. Export the CSV for structured records, or save a portable HTML with the photos, masks and notes included. A fresh visit loads the shared dataset.</p><div class="actions"><button id="templateButton">CSV template</button><button id="manifestDownload">Analysis manifest</button><button id="resetDataset">Restore supplied dataset</button></div></section>
+      </div>
+      <p class="scope">Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> (ODbL). The <a href="https://data.gov.sg/datasets/d_2cc750190544007400b2cfd5d7f53209/view">URA Master Plan 2025 Planning Area Boundary (No Sea)</a> was accessed on 11 November 2026 and is available under the <a href="https://data.gov.sg/open-data-licence">Singapore Open Data Licence</a>.</p>
+    </section>
+    <footer class="footer"><span>Canopy · AR5958A Group 4</span><span>Image-based screening for field review</span></footer>
+  </main>
+</div>
+
+<dialog id="imageViewer" class="viewer">
+  <header class="panelhead"><div><h2 id="viewerTitle"></h2><p id="viewerMeta"></p></div><button data-close="imageViewer" class="icon-button" aria-label="Close photo viewer">×</button></header>
+  <div class="dialog-body"><div id="viewerTabs" class="segments"></div><div id="viewerImage" class="imagebox"></div><div id="viewerLegend" class="map-legend"></div></div>
+</dialog>
+<dialog id="helpDialog">
+  <header class="panelhead"><h2>Using Canopy</h2><button data-close="helpDialog" class="icon-button" aria-label="Close guide">×</button></header>
+  <div class="dialog-body"><ol class="guide"><li>Choose a marker or search for a playground. Records without coordinates are available in the list and register.</li><li>Switch between the photo, mask, overlay or swipe view. Use the comparison tab to compare up to four sites.</li><li>Record detection, photo quality and location checks in the evidence panel.</li><li>Share a link to a record on the hosted site. Save portable HTML to share locally imported images and notes.</li></ol><button data-close="helpDialog" data-go="methods">Read the method</button></div>
+</dialog>
+<dialog id="importDialog">
+  <header class="panelhead"><h2>Import Colab results</h2><button data-close="importDialog" class="icon-button" aria-label="Close import">×</button></header>
+  <div class="dialog-body">
+    <p>Load an analysis CSV to replace the records in this session. Save a portable HTML first if you need a copy of your current work.</p>
+    <label class="file-field">Results CSV<input type="file" id="csvFile" accept=".csv,text/csv"></label>
+    <div class="actions"><button id="loadCSV" class="primary">Load results CSV</button><button id="templateButton2">CSV template</button></div>
+    <p id="importFeedback" role="status"></p>
+    <h3>Attach images</h3><p>Select extracted originals, masks and overlays. Files can use the playground ID, image ID or original filename.</p>
+    <label class="file-field">Choose images<input type="file" id="bulkImages" multiple accept="image/jpeg,image/png,image/webp"></label>
+    <p id="bulkFeedback" role="status"></p>
+  </div>
+</dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+</body>
+</html>
+
