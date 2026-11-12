@@ -65,8 +65,13 @@
   function imagePanel(row, kind, lazy = false) {
     if (kind === "swipe") {
       const photo = image(row), mask = image(row, "mask", false, "swipe-mask");
-      return photo && mask ? '<div class="swipe">' + photo + mask + '</div>' :
-        '<p class="empty">Attach an original and a mask for swipe view.</p>';
+      if (!photo || !mask) return '<p class="empty">Attach an original and a mask for swipe view.</p>';
+      return `<div class="swipe">${photo}${mask}
+        <span class="swipe-label photo" aria-hidden="true">Photo</span>
+        <span class="swipe-label mask" aria-hidden="true">AI mask</span>
+        <span class="swipe-handle" aria-hidden="true"></span>
+        <input data-swipe type="range" min="0" max="100" value="50" aria-label="Photo and AI mask split">
+      </div>`;
     }
     return image(row, kind, lazy) || '<p class="empty">No ' + views[kind].toLowerCase() + ' attached.</p>';
   }
@@ -74,10 +79,6 @@
   function viewButtons(attribute, current) {
     return Object.entries(views).map(([kind, name]) =>
       `<button data-${attribute}="${kind}" aria-pressed="${current === kind}">${name}</button>`).join("");
-  }
-
-  function swipeSlider() {
-    return '<label class="swipe-input">Photo <input data-swipe type="range" min="0" max="100" value="50" aria-label="Reveal photo or mask"> AI mask</label>';
   }
 
   function metrics(row) {
@@ -141,11 +142,16 @@
     $("#datasetBanner").innerHTML = `<span><strong>${demo ? "Demonstration dataset" : "Photograph analysis"}</strong> · ${description}</span>
       <span class="dataset-status">${review ? "Human review pending" : "Review status recorded"}</span>`;
     $("#stats").innerHTML = [
-      ["Playgrounds",rows.length,"One image per record"], ["Photo candidates",rows.filter(candidate).length,inspected+" cleared for inspection"],
-      ["Manual review",review,"Detection, photo or location checks"],
-      ["Located",located+' <span>/ '+rows.length+'</span>',(rows.length-located)+" missing coordinates"],
-    ].map(([name,count,note]) => `<div class="stat"><span class="stat-label">${name}</span>
-      <strong class="number">${count}</strong><small>${note}</small></div>`).join("");
+      ["Playgrounds",rows.length,"One image per record"],
+      ["Photo candidates",rows.filter(candidate).length,inspected+" ready for site inspection","candidate"],
+      ["Manual review",review,"Detection, photo or location checks","review"],
+      ["Mapped",located+" / "+rows.length,(rows.length-located)+" missing coordinates"],
+    ].map(([name,count,note,filter]) => {
+      const content = `<span class="stat-label">${name}</span><strong class="number">${count}</strong><small>${note}</small>`;
+      return filter ?
+        `<button class="stat stat-action" data-screen-filter="${filter}" aria-pressed="false">${content}</button>` :
+        `<div class="stat">${content}</div>`;
+    }).join("");
     $("#ruleSummary").textContent = $("#methodThresholds").textContent = cutoff ?
       `Photo screening rule: tree pixels ≤ ${fmt(cutoff.tree)}% and sky pixels ≥ ${fmt(cutoff.sky)}%. Thresholds are relative to this dataset.` :
       "Load at least five records to apply the relative screening rule.";
@@ -169,6 +175,14 @@
     const located = matches.filter(C.mapped);
     const reviewMode = $("#mapColour").value === "review";
     $("#mapcount").textContent = located.length + " mapped · " + matches.length + " matching";
+    const filter = $("#statusFilter").value;
+    $$("[data-screen-filter]").forEach(button =>
+      button.setAttribute("aria-pressed", String(button.dataset.screenFilter === filter)));
+    const empty = $("#mapEmpty");
+    empty.hidden = Boolean(located.length);
+    empty.innerHTML = located.length ? "" : matches.length ?
+      `<span>These results have no coordinates.</span><button data-show-matches>View matching records</button>` :
+      `<span>No playgrounds match this search.</span><button data-screen-filter="all">Clear filters</button>`;
     $("#mapLegend").innerHTML = reviewMode ?
       '<span><i class="dot" style="background:#684882"></i>Manual review</span><span><i class="dot" style="background:#a16414"></i>Inspection candidate</span><span><i class="dot"></i>Not flagged</span>' :
       '<span><i class="dot" style="background:#a16414"></i>Relative photo candidate</span><span><i class="dot"></i>Other photo</span><span><i class="dot" style="background:#bf9bd6"></i>Violet outline: review needed</span>';
@@ -197,7 +211,7 @@
     panel.innerHTML = `<div class="detail-meta"><span>Selected playground · ${esc(row.playground_id)}</span>${badge(row)}</div>
       <h2>${esc(row.location)}</h2><p class="coords">${coordinates}</p>
       <div class="segments" aria-label="Image view">${viewButtons("view",view)}</div>
-      <div class="imagebox">${imagePanel(row,view)}</div>${view === "swipe" ? swipeSlider() : ""}
+      <div class="imagebox">${imagePanel(row,view)}</div>
       <div class="image-tools"><button data-enlarge>Enlarge</button><button data-compare-selected>Compare</button><button data-share>Copy link</button></div>
       <div class="metrics">${metrics(row)}</div>
       <p class="source-line">Total vegetation ${fmt(row.vegetation_pct)}% · Shelter visible: ${esc(row.shelter_visible || "Unclear")}</p>
@@ -242,8 +256,6 @@
     $("#viewerImage").innerHTML = imagePanel(row,kind);
     $("#viewerLegend").innerHTML = features.map(([key,name,color]) =>
       `<span><i class="dot" style="background:var(${color})"></i>${name} ${fmt(value(row,key))}%</span>`).join("");
-    $("#imageViewer").querySelector(".swipe-input")?.remove();
-    if (kind === "swipe") $("#viewerImage").insertAdjacentHTML("afterend",swipeSlider());
     if (!$("#imageViewer").open) $("#imageViewer").showModal();
   }
 
@@ -471,7 +483,7 @@
       const dynamic = ["heroImage","stats","mapGeometry","markers","mapResultList","detail","galleryGrid",
         "comparison","queue","tablebody","scatter","viewerImage","viewerTabs","viewerLegend","comparePicker"];
       dynamic.forEach(id => clone.querySelector("#"+id)?.replaceChildren());
-      clone.querySelectorAll("#basemap text, #imageViewer .swipe-input").forEach(node => node.remove());
+      clone.querySelectorAll("#basemap text").forEach(node => node.remove());
       clone.querySelectorAll("dialog[open],details[open]").forEach(node => node.removeAttribute("open"));
       clone.querySelector("#explore").removeAttribute("hidden");
       clone.querySelector("#toast").setAttribute("hidden","");
@@ -499,6 +511,7 @@
   function setTheme(theme) {
     document.documentElement.dataset.theme = theme;
     $("#themeToggle").setAttribute("aria-pressed",String(theme==="dark"));
+    $("#themeToggle").textContent = theme === "dark" ? "Light mode" : "Dark mode";
   }
 
   document.addEventListener("click",event => {
@@ -511,6 +524,20 @@
     if (data.close) $("#"+data.close).close();
     if (data.tab || data.go) showTab(data.tab || data.go);
     if (data.record) openRecord(data.record);
+    if (data.screenFilter) {
+      const filter = $("#statusFilter");
+      filter.value = filter.value === data.screenFilter ? "all" : data.screenFilter;
+      $("#search").value = "";
+      renderMap();
+      map.fit();
+      $("#mapWorkspace").scrollIntoView({ block:"start" });
+      filter.focus({ preventScroll:true });
+    }
+    if (Object.hasOwn(data,"showMatches")) {
+      const results = $(".map-results");
+      results.open = true;
+      $("#mapResultList button")?.focus();
+    }
     if (data.remove) updateComparison(data.remove,false);
     if (data.view) {
       view = data.view;
@@ -540,7 +567,7 @@
 
   document.addEventListener("input",event => {
     if (event.target.matches("[data-swipe]")) {
-      event.target.closest("aside,.dialog-body")?.querySelector(".swipe")?.style.setProperty("--reveal",event.target.value+"%");
+      event.target.closest(".swipe").style.setProperty("--reveal",event.target.value+"%");
     }
   });
 

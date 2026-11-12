@@ -20,12 +20,12 @@
     <a class="brand" href="#explore" aria-label="Canopy home"><span class="brand-mark" aria-hidden="true"></span><span>canopy<span class="brand-period">.</span></span></a>
     <p class="rail-context">Sengkang, Singapore</p>
     <nav id="navigation" aria-label="Project navigation">
-      <button data-tab="explore" aria-current="page"><span class="nav-symbol" aria-hidden="true">◎</span>Screening map</button>
-      <button data-tab="gallery"><span class="nav-symbol" aria-hidden="true">▧</span>Photo collection</button>
-      <button data-tab="compare"><span class="nav-symbol" aria-hidden="true">◫</span>Compare results<span id="compareCount" class="nav-count"></span></button>
-      <button data-tab="review"><span class="nav-symbol" aria-hidden="true">⚑</span>Review queue</button>
-      <button data-tab="data"><span class="nav-symbol" aria-hidden="true">≡</span>Playground data</button>
-      <button data-tab="methods"><span class="nav-symbol" aria-hidden="true">↳</span>Method &amp; guide</button>
+      <button data-tab="explore" aria-current="page">Screening map</button>
+      <button data-tab="gallery">Photo collection</button>
+      <button data-tab="compare">Compare results<span id="compareCount" class="nav-count"></span></button>
+      <button data-tab="review">Review queue</button>
+      <button data-tab="data">Playground data</button>
+      <button data-tab="methods">Method &amp; guide</button>
     </nav>
     <div class="rail-foot"><strong>AR5958A · Group 4</strong><span>Topics in Urbanism 1</span></div>
   </aside>
@@ -33,8 +33,8 @@
     <header class="masthead">
       <div class="breadcrumbs"><span>Canopy</span><span aria-hidden="true">/</span><strong id="breadcrumb">Screening map</strong></div>
       <div class="actions">
-        <button id="themeToggle" class="icon-button" aria-label="Switch colour theme" title="Switch colour theme">◐</button>
-        <details class="utility" id="utility"><summary class="button">Project tools <span aria-hidden="true">⌄</span></summary>
+        <button id="themeToggle" aria-label="Switch colour theme">Dark mode</button>
+        <details class="utility" id="utility"><summary class="button">Project tools</summary>
           <div class="utility-menu">
             <button id="importButton">Import Colab results</button>
             <button id="exportButton">Export results CSV</button>
@@ -48,24 +48,23 @@
     <section id="explore" class="tab">
       <div class="intro">
         <div class="intro-copy">
-          <p class="location"><span aria-hidden="true">↗</span> Sengkang, Singapore</p>
-          <h1>Playground shade<br>screening.</h1>
-          <p class="lede">Explore what playground photographs reveal about trees, sky and buildings. Use the evidence to choose which sites to check in person.</p>
+          <h1>Playground shade screening</h1>
+          <p class="lede">Compare trees, sky and buildings in Sengkang playground photographs to decide where to check shade in person.</p>
           <div class="actions">
-            <button class="primary" id="exploreButton">Explore the map <span aria-hidden="true">↓</span></button>
-            <button class="plain" data-go="methods">How screening works <span aria-hidden="true">↗</span></button>
+            <button class="primary" id="exploreButton">Explore the map</button>
+            <button class="plain" data-go="methods">How screening works</button>
           </div>
         </div>
         <figure class="hero-evidence">
           <div class="hero-image" id="heroImage"></div>
-          <figcaption><span id="heroCaption">Playground @ Anchorvale Village</span><button id="heroInspect" class="plain">Inspect example <span aria-hidden="true">↗</span></button></figcaption>
+          <figcaption><span id="heroCaption">Playground @ Anchorvale Village</span><button id="heroInspect" class="plain">Inspect photo</button></figcaption>
         </figure>
       </div>
-      <div id="datasetBanner" class="dataset-band"></div>
       <div id="stats" class="stats" aria-label="Dataset summary"></div>
+      <div id="datasetBanner" class="dataset-band"></div>
       <div id="mapWorkspace" class="workspace">
         <section class="map-panel panel" aria-labelledby="mapHeading">
-          <header class="panelhead"><div><h2 id="mapHeading">Screening map</h2><p id="mapcount"></p></div><button id="fitMap">Fit locations</button></header>
+          <header class="panelhead"><div><h2 id="mapHeading">Screening map</h2><p id="mapcount" role="status"></p></div><button id="fitMap">Fit locations</button></header>
           <div class="filters">
             <input type="search" id="search" aria-label="Search playgrounds" placeholder="Search ID or location…">
             <select id="mapColour" aria-label="Map colour mode"><option value="indicators">Photo indicators</option><option value="review">Review status</option></select>
@@ -79,6 +78,7 @@
             <span id="mapScale" class="scale"></span>
             <div class="attribution" id="mapAttribution"></div>
           </div>
+          <div id="mapEmpty" class="map-empty" hidden></div>
           <div id="mapLegend" class="map-legend"></div>
           <p id="ruleSummary" class="map-rule"></p>
           <details class="map-results"><summary>Show matching playgrounds</summary><div id="mapResultList"></div></details>
