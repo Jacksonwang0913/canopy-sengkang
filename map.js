@@ -5,7 +5,7 @@
   const origin = { lat: 1.392, lon: 103.893 };
   const xy = (lat, lon) => [(lon - origin.lon) * unit, (origin.lat - lat) * unit];
   const svgNS = "http://www.w3.org/2000/svg";
-  const regionalBounds = { x: 30000, y: 28000 };
+  const worldBounds = { left: xy(0, -180)[0], right: xy(0, 180)[0], top: xy(90, 0)[1], bottom: xy(-90, 0)[1] };
   const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
   const draw = (name, attrs) => {
     const el = document.createElementNS(svgNS, name);
@@ -73,7 +73,8 @@
       this.points = points.map(({ row, selected, candidate, needsReview, reviewMode }) => {
         const button = document.createElement("button");
         button.className = "marker" + (selected ? " is-active" : "") + (candidate ? " is-candidate" : "") +
-          (needsReview ? " is-review" : "") + (reviewMode ? " review-mode" : "");
+          (needsReview ? " is-review" : "") + (reviewMode ? " review-mode" : "") +
+          (root.CanopyCore.browserAnalysis(row) ? " is-upload" : "");
         button.textContent = row.playground_id.replace(/^PG[_-]/i, "").slice(-4);
         button.title = row.playground_id + " · " + row.location;
         button.setAttribute("aria-label", "Open " + button.title);
@@ -91,6 +92,10 @@
       const w = this.el.clientWidth, h = this.el.clientHeight;
       if (!w || !h) return;
       const left = w / 2 - this.center[0] * this.scale, top = h / 2 - this.center[1] * this.scale;
+      const hasLocalContext = Math.max(Math.abs(this.center[0]), Math.abs(this.center[1])) <= 2200 && this.scale >= .015;
+      this.el.classList.toggle("is-coordinate-map", !hasLocalContext);
+      this.el.querySelector("#mapnote").textContent = hasLocalContext ? "Sengkang basemap" : "Coordinate map · Sengkang basemap where available";
+      this.scaleLabel.hidden = !hasLocalContext;
       this.geometry.setAttribute("transform", "translate(" + left + " " + top + ") scale(" + this.scale + ")");
       for (const { button, point } of this.points) {
         const x = left + point[0] * this.scale, y = top + point[1] * this.scale;
@@ -121,7 +126,7 @@
         const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
         this.center = [(left + right) / 2, (top + bottom) / 2];
         this.scale = clamp(Math.min((w - 70) / Math.max(right - left, 270),
-          (h - 70) / Math.max(bottom - top, 270)), .015, .47);
+          (h - 70) / Math.max(bottom - top, 270)), .000001, .47);
       }
       this.hasFit = true;
       this.render();
@@ -133,13 +138,13 @@
     }
 
     pan(dx, dy) {
-      this.center = [clamp(this.center[0] - dx / this.scale, -regionalBounds.x, regionalBounds.x),
-        clamp(this.center[1] - dy / this.scale, -regionalBounds.y, regionalBounds.y)];
+      this.center = [clamp(this.center[0] - dx / this.scale, worldBounds.left, worldBounds.right),
+        clamp(this.center[1] - dy / this.scale, worldBounds.top, worldBounds.bottom)];
       this.render();
     }
 
     zoom(factor, x = this.el.clientWidth / 2, y = this.el.clientHeight / 2) {
-      const next = clamp(this.scale * factor, .015, 1.15);
+      const next = clamp(this.scale * factor, .000001, 1.15);
       const shift = 1 / this.scale - 1 / next;
       this.center = [this.center[0] + (x - this.el.clientWidth / 2) * shift,
         this.center[1] + (y - this.el.clientHeight / 2) * shift];

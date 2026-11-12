@@ -11,6 +11,7 @@
 <script defer src="data/basemap.js"></script>
 <script defer src="core.js"></script>
 <script defer src="map.js"></script>
+<script defer src="photo-analysis.js"></script>
 <script defer src="app.js"></script>
 </head>
 <body>
@@ -21,6 +22,7 @@
     <p class="rail-context">Sengkang, Singapore</p>
     <nav id="navigation" aria-label="Project navigation">
       <button data-tab="explore" aria-current="page">Screening map</button>
+      <button data-tab="analyse">Analyse a photo</button>
       <button data-tab="gallery">Photo collection</button>
       <button data-tab="compare">Compare results<span id="compareCount" class="nav-count"></span></button>
       <button data-tab="review">Review queue</button>
@@ -64,7 +66,7 @@
       <div id="datasetBanner" class="dataset-band"></div>
       <div id="mapWorkspace" class="workspace">
         <section class="map-panel panel" aria-labelledby="mapHeading">
-          <header class="panelhead"><div><h2 id="mapHeading">Screening map</h2><p id="mapcount" role="status"></p></div><button id="fitMap">Fit locations</button></header>
+          <header class="panelhead"><div><h2 id="mapHeading">Screening map</h2><p id="mapcount" role="status"></p></div><div class="actions"><button class="primary" data-go="analyse">Analyse a photo</button><button id="fitMap">Fit locations</button></div></header>
           <div class="filters">
             <input type="search" id="search" aria-label="Search playgrounds" placeholder="Search ID or location…">
             <select id="mapColour" aria-label="Map colour mode"><option value="indicators">Photo indicators</option><option value="review">Review status</option></select>
@@ -86,6 +88,38 @@
         <aside id="detail" class="panel detail" aria-label="Selected playground"></aside>
       </div>
       <p class="scope">Percentages describe visible pixels in one image per site. Field observations are needed to establish actual shade and heat exposure.</p>
+    </section>
+
+    <section id="analyse" class="tab" hidden>
+      <header class="page-heading"><h1>Analyse a photo</h1><p>Choose a playground photo and place its SegFormer result on the map.</p></header>
+      <div class="analysis-layout">
+        <form class="panel analysis-form" id="photoForm">
+          <fieldset>
+            <legend>Site location</legend>
+            <label for="photoSite">Playground name or address <span>(optional)</span></label>
+            <input id="photoSite" name="location" type="text" maxlength="120" placeholder="e.g. Blk 262 Sengkang East Way">
+            <div class="coordinate-fields">
+              <div><label for="photoLat">Latitude</label><input id="photoLat" name="latitude" type="number" step="any" min="-90" max="90" placeholder="1.3938" required></div>
+              <div><label for="photoLon">Longitude</label><input id="photoLon" name="longitude" type="number" step="any" min="-180" max="180" placeholder="103.9013" required></div>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>Photograph</legend>
+            <input id="analysisFile" name="photo" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" aria-label="Playground photograph" aria-describedby="photoFormats" required>
+            <p id="photoFormats">JPG, PNG or WebP · up to 20 MB.</p>
+          </fieldset>
+          <div class="actions"><button class="primary" id="runAnalysis" type="submit">Analyse and add to map</button></div>
+          <p id="analysisStatus" role="status"></p>
+        </form>
+        <aside class="analysis-preview" aria-label="Photo preview">
+          <img id="analysisPreview" alt="Selected playground photograph" hidden>
+          <div class="analysis-notes">
+            <h2>What you’ll see</h2>
+            <p>The original photo, a colour-coded segmentation mask and the shares of pixels classified as trees, other vegetation, sky and buildings.</p>
+            <p>The first run downloads the model. The photo is processed on this device. Use <strong>Project tools → Save portable HTML</strong> to keep this session’s results.</p>
+          </div>
+        </aside>
+      </div>
     </section>
 
     <section id="gallery" class="tab" hidden>
@@ -112,7 +146,7 @@
     <section id="methods" class="tab" hidden>
       <header class="page-heading"><h1>Method &amp; guide</h1><p>How Canopy turns a photograph into evidence for human review.</p></header>
       <div class="methods-layout">
-        <section><h2>From image to indicator</h2><p>We matched the 40 supplied photos to the coordinate register by exact filename and SHA-256. The site displays precomputed <a href="https://huggingface.co/nvidia/segformer-b2-finetuned-ade-512-512">SegFormer B2</a> outputs. For new photographs, run the Colab analysis and import the results.</p><p>The mask groups pixels into trees, other vegetation, sky, buildings and other features. Shelter visibility is recorded by a person.</p></section>
+        <section><h2>From image to indicator</h2><p>We matched the 40 supplied photos to the coordinate register by exact filename and SHA-256. The site displays precomputed <a href="https://huggingface.co/nvidia/segformer-b2-finetuned-ade-512-512">SegFormer B2</a> outputs. Use <button class="plain" data-go="analyse">Analyse a photo</button> to run the browser version on a new photo. Colab batch results can also be imported.</p><p>The mask groups pixels into trees, other vegetation, sky, buildings and other features. Shelter visibility is recorded by a person.</p></section>
         <section><h2>How the screening rule works</h2><p>A photo becomes a candidate when tree pixels are at or below the 25th percentile and sky pixels are at or above the 75th percentile. The rule uses all loaded records and requires at least five.</p><p id="methodThresholds" class="callout"></p><p>Detection, photo quality and coordinates must pass review before a record becomes an inspection candidate. Use a site visit to assess ground shade and heat exposure.</p></section>
         <section><h2>Where errors occur</h2><p>Framing, weather and the date of capture affect what appears in the photo. SegFormer has no dedicated playground equipment class. In PG29, parts of a green slide were classified as vegetation.</p><button data-record="PG_29">Inspect PG29 ↗</button></section>
         <section><h2>Save and reproduce</h2><p>Review notes for the supplied records are saved on this device. Export the CSV for structured records, or save a portable HTML with the photos, masks and notes included. A fresh visit loads the shared dataset.</p><div class="actions"><button id="templateButton">CSV template</button><button id="manifestDownload">Analysis manifest</button><button id="resetDataset">Restore supplied dataset</button></div></section>

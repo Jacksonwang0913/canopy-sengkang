@@ -24,7 +24,7 @@ def bundle(root: Path) -> str:
         css = css.replace("assets/" + font, data_url(root / "assets" / font, "font/woff2"))
     page = page.replace('<link rel="stylesheet" href="styles.css">', "<style>\n" + css + "\n</style>")
 
-    paths = ["data/records.js", "data/basemap.js", "core.js", "map.js", "app.js"]
+    paths = ["data/records.js", "data/basemap.js", "core.js", "map.js", "photo-analysis.js", "app.js"]
     records = json.loads(read_text(root / paths[0]).removeprefix("window.CANOPY_RECORDS = ").strip().removesuffix(";"))
     for row in records:
         for kind in ("original", "mask", "overlay"):

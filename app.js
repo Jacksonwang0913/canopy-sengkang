@@ -7,7 +7,7 @@
   const bundled = window.CANOPY_RECORDS;
   const storageKey = "canopy-reviews-v2-" + (bundled[0]?.source_sha256?.slice(0, 14) ?? "imported");
   const tabs = { explore:"Screening map", gallery:"Photo collection", compare:"Compare results",
-    review:"Review queue", data:"Playground data", methods:"Method & guide" };
+    analyse:"Analyse a photo", review:"Review queue", data:"Playground data", methods:"Method & guide" };
   const features = [
     ["tree_pct","Trees","--tree"], ["other_vegetation_pct","Other vegetation","--veg"],
     ["sky_pct","Visible sky","--sky"], ["buildings_pct","Buildings","--building"], ["other_pct","Other features","--other"],
@@ -43,7 +43,8 @@
   const find = id => rows.find(row => row.playground_id === id);
   const candidate = row => C.candidate(row, cutoff);
   const status = row => C.status(row, cutoff);
-  const label = row => !cutoff && status(row) === "clear" ? "Insufficient sample" : labels[status(row)];
+  const label = row => status(row) === "clear" ?
+    (C.browserAnalysis(row) ? "New photo" : !cutoff ? "Insufficient sample" : labels.clear) : labels[status(row)];
   const badge = row => '<span class="pill ' + status(row) + '">' + label(row) + '</span>';
   const value = (row, key) => key === "other_pct" ? C.other(row) : row[key];
   const size = (row, key) => Math.max(0, Math.min(100, value(row, key)));
@@ -132,17 +133,19 @@
   }
 
   function renderStats() {
-    const demo = rows.every(row => row.demo);
-    const b2 = rows.every(row => row.model_name === "nvidia/segformer-b2-finetuned-ade-512-512");
+    const sample = rows.filter(row => !C.browserAnalysis(row));
+    const uploads = rows.length - sample.length;
+    const demo = sample.length && sample.every(row => row.demo);
+    const b2 = sample.length && sample.every(row => row.model_name === "nvidia/segformer-b2-finetuned-ade-512-512");
     const located = rows.filter(C.mapped).length;
     const review = rows.filter(row => status(row) === "review").length;
     const inspected = rows.filter(row => status(row) === "candidate").length;
     const description = demo ? "Fictional example records." :
       b2 ? "Precomputed SegFormer B2 results from the group’s collection." : "Imported records. See each record for model provenance.";
-    $("#datasetBanner").innerHTML = `<span><strong>${demo ? "Demonstration dataset" : "Photograph analysis"}</strong> · ${description}</span>
+    $("#datasetBanner").innerHTML = `<span><strong>${demo ? "Demonstration dataset" : "Photograph analysis"}</strong> · ${sample.length ? description : ""}${uploads ? ` ${uploads} added in the browser.` : ""}</span>
       <span class="dataset-status">${review ? "Human review pending" : "Review status recorded"}</span>`;
     $("#stats").innerHTML = [
-      ["Playgrounds",rows.length,"One image per record"],
+      [uploads ? "Photo records" : "Playgrounds",rows.length,"One image per record"],
       ["Photo candidates",rows.filter(candidate).length,inspected+" ready for site inspection","candidate"],
       ["Manual review",review,"Detection, photo or location checks","review"],
       ["Mapped",located+" / "+rows.length,(rows.length-located)+" missing coordinates"],
@@ -186,6 +189,7 @@
     $("#mapLegend").innerHTML = reviewMode ?
       '<span><i class="dot" style="background:#684882"></i>Manual review</span><span><i class="dot" style="background:#a16414"></i>Inspection candidate</span><span><i class="dot"></i>Not flagged</span>' :
       '<span><i class="dot" style="background:#a16414"></i>Relative photo candidate</span><span><i class="dot"></i>Other photo</span><span><i class="dot" style="background:#bf9bd6"></i>Violet outline: review needed</span>';
+    if (matches.some(C.browserAnalysis)) $("#mapLegend").insertAdjacentHTML("beforeend", '<span><i class="dot upload-dot"></i>Browser analysis</span>');
     $("#mapResultList").innerHTML = matches.length ? matches.map(row =>
       `<button data-record="${esc(row.playground_id)}">${esc(row.playground_id+" · "+row.location)}${C.mapped(row) ? "" : " · Unlocated"}</button>`).join("") :
       '<p class="empty">No matching playgrounds.</p>';
@@ -206,17 +210,19 @@
     const fields = [
       ["detection_review","Detection"], ["photo_quality","Photo quality"], ["location_confidence","Location confidence"],
     ].map(([key, title]) => `<label>${title}<select name="${key}">${options(C.reviewOptions[key],row[key])}</select></label>`).join("");
+    const newPhoto = C.browserAnalysis(row);
+    const mapLink = newPhoto && C.mapped(row) ? `<a class="button" href="https://www.openstreetmap.org/?mlat=${row.latitude}&amp;mlon=${row.longitude}#map=17/${row.latitude}/${row.longitude}" target="_blank" rel="noopener">Open location on OpenStreetMap</a>` : "";
     const provenance = [row.filename,row.photo_source,row.photo_quality_note,row.scope_note,row.model_name,
       row.analysis_width ? row.analysis_width+" × "+row.analysis_height+" analysis pixels" : ""].filter(Boolean).map(esc).join("<br>");
-    panel.innerHTML = `<div class="detail-meta"><span>Selected playground · ${esc(row.playground_id)}</span>${badge(row)}</div>
+    panel.innerHTML = `<div class="detail-meta"><span>${newPhoto ? "Browser analysis" : "Selected playground"} · ${esc(row.playground_id)}</span>${badge(row)}</div>
       <h2>${esc(row.location)}</h2><p class="coords">${coordinates}</p>
       <div class="segments" aria-label="Image view">${viewButtons("view",view)}</div>
       <div class="imagebox">${imagePanel(row,view)}</div>
-      <div class="image-tools"><button data-enlarge>Enlarge</button><button data-compare-selected>Compare</button><button data-share>Copy link</button></div>
+      <div class="image-tools"><button data-enlarge>Enlarge</button><button data-compare-selected>Compare</button>${newPhoto ? "" : "<button data-share>Copy link</button>"}</div>
       <div class="metrics">${metrics(row)}</div>
       <p class="source-line">Total vegetation ${fmt(row.vegetation_pct)}% · Shelter visible: ${esc(row.shelter_visible || "Unclear")}</p>
       <div class="callout"><strong>${issues.length ? "Verify this evidence" : label(row)}</strong>
-      ${issues.length ? issues.map(esc).join(" · ") : "Use a site visit to establish actual shade conditions."}</div>
+      ${issues.length ? issues.map(esc).join(" · ") : "Use a site visit to establish actual shade conditions."}</div>${mapLink}
       <details class="review-form"${keepOpen ? " open" : ""}><summary>Human review &amp; attachments</summary>
         <form id="reviewForm" class="form-grid">${fields}
           <label>Latitude<input name="latitude" type="number" step="any" value="${esc(row.latitude)}"></label>
@@ -237,9 +243,9 @@
     if (Boolean(lat) !== Boolean(lon)) return toast("Enter both coordinates or leave both blank.");
     fields.latitude = lat ? Number(lat) : null;
     fields.longitude = lon ? Number(lon) : null;
-    if (lat && !C.mapped(fields)) return toast("Coordinates must fall within Singapore.");
+    if (lat && !C.mapped({ ...row, ...fields })) return toast(C.browserAnalysis(row) ? "Enter a valid latitude and longitude." : "Coordinates must fall within Singapore.");
     Object.assign(row, fields);
-    const saved = usingBundle && !window.CANOPY_PORTABLE &&
+    const saved = usingBundle && !C.browserAnalysis(row) && !window.CANOPY_PORTABLE &&
       store(storageKey,{ ...stored(storageKey,{}),[row.playground_id]:fields });
     refresh(true);
     if (C.mapped(row)) map.focus(row);
@@ -411,6 +417,56 @@
     $("#statusFilter").value = $("#queueFilter").value = "all";
   }
 
+  function setPhotoPreview(file) {
+    const preview = $("#analysisPreview");
+    if (preview.src.startsWith("blob:")) URL.revokeObjectURL(preview.src);
+    preview.hidden = !file;
+    if (file) preview.src = URL.createObjectURL(file);
+    else preview.removeAttribute("src");
+  }
+
+  async function analysePhoto(event) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const statusLine = $("#analysisStatus");
+    if (form.dataset.busy === "true") return;
+    const fields = new FormData(form);
+    const file = fields.get("photo");
+    const latitude = Number(fields.get("latitude"));
+    const longitude = Number(fields.get("longitude"));
+    form.dataset.busy = "true";
+    form.querySelectorAll("input,button").forEach(input => { input.disabled = true; });
+    statusLine.removeAttribute("data-error");
+    statusLine.textContent = "Preparing photo…";
+    try {
+      const result = await CanopyPhotoAnalysis.analyse(file, phase => {
+        statusLine.textContent = phase === "loading" ? "Loading SegFormer B2. The first download can take a moment…" : "Analysing the photograph…";
+      });
+      let number = rows.filter(C.browserAnalysis).length + 1;
+      while (find("NEW-" + number)) number++;
+      const id = "NEW-" + number;
+      rows.push({
+        ...result, playground_id:id, image_id:id,
+        location:fields.get("location").trim() || "Uploaded playground photo " + number,
+        latitude, longitude, filename:file.name, photo_source:"User-selected image, processed in browser",
+        data_origin:C.browserOrigin, scope_note:"Added during this session. Separate from the study sample.",
+        shelter_visible:"Unclear", detection_review:"Unreviewed", photo_quality:"Unreviewed", location_confidence:"Unverified",
+      });
+      refresh();
+      openRecord(id);
+      form.reset();
+      setPhotoPreview(null);
+      statusLine.textContent = "";
+      toast("Photo analysed and added to the map.");
+    } catch (error) {
+      statusLine.dataset.error = "";
+      statusLine.textContent = error.message;
+    } finally {
+      delete form.dataset.busy;
+      form.querySelectorAll("input,button").forEach(input => { input.disabled = false; });
+    }
+  }
+
   async function importCSV() {
     const file = $("#csvFile").files[0], feedback = $("#importFeedback");
     if (!file) { feedback.textContent = "Choose a CSV first."; return; }
@@ -481,11 +537,16 @@
         head.querySelector('link[rel="stylesheet"]').replaceWith(sheet);
       }
       const dynamic = ["heroImage","stats","mapGeometry","markers","mapResultList","detail","galleryGrid",
-        "comparison","queue","tablebody","scatter","viewerImage","viewerTabs","viewerLegend","comparePicker"];
+        "comparison","queue","tablebody","scatter","viewerImage","viewerTabs","viewerLegend","comparePicker","analysisStatus"];
       dynamic.forEach(id => clone.querySelector("#"+id)?.replaceChildren());
       clone.querySelectorAll("#basemap text").forEach(node => node.remove());
       clone.querySelectorAll("dialog[open],details[open]").forEach(node => node.removeAttribute("open"));
       clone.querySelector("#explore").removeAttribute("hidden");
+      clone.querySelector("#analyse").setAttribute("hidden","");
+      clone.querySelector("#photoForm").removeAttribute("data-busy");
+      clone.querySelectorAll("#photoForm [disabled]").forEach(input => input.removeAttribute("disabled"));
+      clone.querySelector("#analysisPreview").removeAttribute("src");
+      clone.querySelector("#analysisPreview").setAttribute("hidden","");
       clone.querySelector("#toast").setAttribute("hidden","");
       clone.querySelector("#saveHtml").removeAttribute("disabled");
       clone.querySelector("#saveHtml").textContent = original;
@@ -592,6 +653,8 @@
     setTheme(theme); store("canopy-theme",theme);
   };
   $("#exploreButton").onclick = () => $("#mapWorkspace").scrollIntoView({ block:"start" });
+  $("#photoForm").onsubmit = analysePhoto;
+  $("#analysisFile").onchange = event => setPhotoPreview(event.target.files[0]);
   for (const [id,dialog] of [["helpButton","helpDialog"],["importButton","importDialog"]]) {
     $("#"+id).onclick = () => { $("#utility").open = false; $("#"+dialog).showModal(); };
   }

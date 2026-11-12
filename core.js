@@ -20,8 +20,13 @@
   const escape = value => String(value ?? "").replace(/[&<>"']/g, c =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   const format = value => Number(value).toFixed(1).replace(/\.0$/, "");
-  const mapped = ({ latitude, longitude }) => Number.isFinite(latitude) && Number.isFinite(longitude) &&
+  const browserOrigin = "Browser photo analysis";
+  const browserAnalysis = row => row.data_origin === browserOrigin;
+  const validCoordinates = ({ latitude, longitude }) => Number.isFinite(latitude) && Number.isFinite(longitude) &&
+    Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180;
+  const inSingapore = ({ latitude, longitude }) => Number.isFinite(latitude) && Number.isFinite(longitude) &&
     latitude >= 1.15 && latitude <= 1.48 && longitude >= 103.58 && longitude <= 104.10;
+  const mapped = row => browserAnalysis(row) ? validCoordinates(row) : inSingapore(row);
   const search = (record, term) =>
     [record.playground_id, record.location, record.filename, record.image_id]
       .some(value => String(value ?? "").toLowerCase().includes(term.trim().toLowerCase()));
@@ -35,19 +40,20 @@
   }
 
   function thresholds(rows) {
-    if (rows.length < 5) return null;
-    return { tree: quantile(rows.map(row => row.tree_pct), .25), sky: quantile(rows.map(row => row.sky_pct), .75) };
+    const sample = rows.filter(row => !browserAnalysis(row));
+    if (sample.length < 5) return null;
+    return { tree: quantile(sample.map(row => row.tree_pct), .25), sky: quantile(sample.map(row => row.sky_pct), .75) };
   }
 
   function candidate(row, cutoff) {
-    return Boolean(cutoff && row.tree_pct <= cutoff.tree && row.sky_pct >= cutoff.sky);
+    return Boolean(cutoff && !browserAnalysis(row) && row.tree_pct <= cutoff.tree && row.sky_pct >= cutoff.sky);
   }
 
   function issues(row) {
     const concerns = [];
     if (row.detection_review !== "Checked") concerns.push(row.detection_review === "Unreliable" ? "AI detection marked unreliable" : "AI detection unchecked");
     if (row.photo_quality !== "Suitable") concerns.push("Photo quality: " + (row.photo_quality || "Unreviewed"));
-    if (!mapped(row)) concerns.push("Missing valid Singapore coordinates");
+    if (!mapped(row)) concerns.push(browserAnalysis(row) ? "Missing valid coordinates" : "Missing valid Singapore coordinates");
     else if (row.location_confidence !== "Exact point") concerns.push("Location: " + (row.location_confidence || "Unverified"));
     return concerns;
   }
@@ -124,8 +130,9 @@
     const cell = value => '"' + String(value ?? "").replaceAll('"', '""') + '"';
     const lines = rows.map(row => csvFields.map(field => {
       if (field === "screening_note") return cell(template ? "Pending comparison" :
-        candidate(row, cutoff) ? "Relative photo-review candidate" : "Not flagged by relative rule");
-      if (field === "data_origin") return cell(row.demo ? "Fictional demonstration" : "AI analysis of supplied photograph");
+        browserAnalysis(row) ? "New photo outside the study screening rule" :
+          candidate(row, cutoff) ? "Relative photo-review candidate" : "Not flagged by relative rule");
+      if (field === "data_origin") return cell(row.data_origin || (row.demo ? "Fictional demonstration" : "AI analysis of supplied photograph"));
       return cell(row[field]);
     }).join(","));
     return [csvFields.map(cell).join(","), ...lines].join("\r\n");
@@ -151,5 +158,5 @@
   }
 
   root.CanopyCore = { escape, format, mapped, search, other, thresholds, candidate, issues, status,
-    parseCSV, toCSV, matchAttachment, reviewOptions, reviewFields };
+    parseCSV, toCSV, matchAttachment, reviewOptions, reviewFields, browserOrigin, browserAnalysis };
 })(globalThis);
